@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Django
+*.sqlite3
+media/
+staticfiles/
+.env
+
+# Airflow
+airflow.db
+airflow.cfg
+logs/
+airflow-webserver.pid
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Docker
+*.env
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+
+# Data (don't commit raw pulled datasets)
+*.csv
+*.jsonl
+*.parquet
