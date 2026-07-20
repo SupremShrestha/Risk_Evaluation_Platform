@@ -20,3 +20,12 @@ CREATE TABLE IF NOT EXISTS incidents (
 CREATE INDEX IF NOT EXISTS idx_incidents_hazard ON incidents(hazard_id);
 CREATE INDEX IF NOT EXISTS idx_incidents_incident_on ON incidents(incident_on);
 CREATE INDEX IF NOT EXISTS idx_incidents_point ON incidents USING GIST(point);
+
+CREATE TABLE IF NOT EXISTS hazards (
+    id          INTEGER PRIMARY KEY,
+    title       TEXT NOT NULL,
+    title_ne    TEXT,
+    type        TEXT,           -- 'natural' or 'non natural'
+    color       TEXT,
+    icon_url    TEXT
+);
