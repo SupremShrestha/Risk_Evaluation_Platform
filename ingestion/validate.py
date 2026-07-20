@@ -23,7 +23,15 @@ def build_expectation_suite(context):
         datasource_name="incidents_datasource",
         data_connector_name="default_runtime_data_connector",
         data_asset_name="incidents",
-        runtime_parameters={"query": "SELECT * FROM incidents"},
+        runtime_parameters={
+            "query": """
+                SELECT
+                    id, hazard_id, incident_on, loss_id,
+                    ST_X(point) AS longitude,
+                    ST_Y(point) AS latitude
+                FROM incidents
+            """
+        },
         batch_identifiers={"default_identifier_name": "incidents_batch"},
     )
 
@@ -52,6 +60,25 @@ def build_expectation_suite(context):
         "loss_id", min_value=1, max_value=None, mostly=1.0
     )
 
+    # 5. Coordinates must fall within Nepal's actual geographic bounding box
+    #    (catches corrupted or lat/lng-swapped coordinates)
+    validator.expect_column_values_to_be_between(
+        "latitude", min_value=26.3, max_value=30.5, mostly=0.98
+    )
+    validator.expect_column_values_to_be_between(
+        "longitude", min_value=80.0, max_value=88.3, mostly=0.98
+    )
+
+    # 6. incident_on should not be implausibly in the future
+    #    (a real data-quality signal if BIPAD ever sends a garbage date)
+    import datetime
+    validator.expect_column_values_to_be_between(
+        "incident_on",
+        min_value=None,
+        max_value=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        mostly=1.0,
+    )
+    
     validator.save_expectation_suite(discard_failed_expectations=False)
     return suite_name, batch_request
 
