@@ -170,4 +170,4 @@ def run_ingestion(days_back: int = 30):
 
 
 if __name__ == "__main__":
-    run_ingestion(days_back=30)
+    run_ingestion(days_back=730)
