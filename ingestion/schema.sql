@@ -29,3 +29,20 @@ CREATE TABLE IF NOT EXISTS hazards (
     color       TEXT,
     icon_url    TEXT
 );
+
+CREATE TABLE IF NOT EXISTS districts (
+    id          INTEGER PRIMARY KEY,
+    title       TEXT NOT NULL,
+    title_ne    TEXT,
+    code        TEXT,
+    province_id INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS municipalities (
+    id          INTEGER PRIMARY KEY,
+    title       TEXT NOT NULL,
+    title_ne    TEXT,
+    type        TEXT,
+    code        TEXT,
+    district_id INTEGER REFERENCES districts(id)
+);
