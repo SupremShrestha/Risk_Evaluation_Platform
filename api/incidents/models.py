@@ -18,6 +18,20 @@ class Hazard(models.Model):
         return self.title
 
 
+class District(models.Model):
+    id = models.IntegerField(primary_key=True)
+    title = models.TextField()
+    title_ne = models.TextField(null=True, blank=True)
+    code = models.TextField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "districts"
+
+    def __str__(self):
+        return self.title
+    
+    
 class Incident(models.Model):
     id = models.IntegerField(primary_key=True)
     title = models.TextField(null=True, blank=True)
@@ -44,3 +58,8 @@ class Incident(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.incident_on})"
+    
+    district = models.ForeignKey(
+        District, on_delete=models.DO_NOTHING, db_column="district_id", null=True
+    )
+    
