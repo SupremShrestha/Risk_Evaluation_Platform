@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import joblib
+import os
 import mlflow
 import mlflow.sklearn
 from sklearn.ensemble import RandomForestRegressor
@@ -89,6 +91,14 @@ def train_and_evaluate():
         mlflow.log_metric("r2", r2)
 
         mlflow.sklearn.log_model(model, "model")
+        
+        # Persist the label encoders too — Django needs these to convert
+        # district/hazard names into the same integer codes the model
+        # was trained on. Without this, the model is unusable outside
+        # this exact Python session.
+        os.makedirs("artifacts", exist_ok=True)
+        joblib.dump(encoders, "artifacts/encoders.pkl")
+        mlflow.log_artifact("artifacts/encoders.pkl")
 
         print(f"\nMAE:  {mae:.3f}  (avg. how many incidents off, per prediction)")
         print(f"RMSE: {rmse:.3f}")
