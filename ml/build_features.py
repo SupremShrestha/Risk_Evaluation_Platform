@@ -35,27 +35,30 @@ def fetch_monthly_counts():
     """
     conn = get_engine()
     df = pd.read_sql(query, conn, params={"hazards": TOP_HAZARDS})
-    conn.close()
+    # conn.close()
     return df
 
 def build_full_grid(df):
     """
-    The DB query only returns rows where incidents actually happened.
-    But 'zero incidents this month' is real, important information for the
-    model (e.g. 'Kathmandu, Landslide, January = 0' matters just as much as
-    a nonzero count). So we build the FULL grid of every district x hazard x
-    year x month combination, and fill missing ones with 0.
+    Build the full district x hazard x (year,month) grid, but ONLY for
+    year-month combinations that actually exist in our data window
+    (2024-07 through 2026-07) — not all 12 months of every year, which
+    would wrongly include future/unfetched months as fake zeros.
     """
     districts = df["district"].unique()
     hazards = df["hazard"].unique()
-    years = df["year"].unique()
-    months = range(1, 13)
+
+    # Only real, observed (year, month) periods — not a full calendar grid
+    real_periods = df[["year", "month"]].drop_duplicates()
 
     full_index = pd.MultiIndex.from_product(
-        [districts, hazards, years, months],
-        names=["district", "hazard", "year", "month"],
+        [districts, hazards],
+        names=["district", "hazard"],
     )
-    full_grid = pd.DataFrame(index=full_index).reset_index()
+    dh_grid = pd.DataFrame(index=full_index).reset_index()
+
+    # Cross districts x hazards with only the REAL periods
+    full_grid = dh_grid.merge(real_periods, how="cross")
 
     merged = full_grid.merge(
         df, on=["district", "hazard", "year", "month"], how="left"
