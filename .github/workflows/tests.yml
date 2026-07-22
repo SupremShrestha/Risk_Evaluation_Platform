@@ -76,7 +76,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ml
-        run: pip install pandas psycopg2-binary sqlalchemy
+        run: pip install pandas psycopg2-binary sqlalchemy python-dotenv
 
       - name: Run feature engineering tests
         working-directory: ml
