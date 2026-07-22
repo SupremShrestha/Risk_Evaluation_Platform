@@ -10,9 +10,11 @@ TOP_HAZARDS = ["Landslide", "Snake Bite", "Fire", "Flood"]
 from sqlalchemy import create_engine
 
 def get_engine():
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = os.getenv("DB_PORT", "5433")
     uri = (
         f"postgresql+psycopg2://{os.getenv('POSTGRES_USER')}:"
-        f"{os.getenv('POSTGRES_PASSWORD')}@localhost:5433/"
+        f"{os.getenv('POSTGRES_PASSWORD')}@{db_host}:{db_port}/"
         f"{os.getenv('POSTGRES_DB')}"
     )
     return create_engine(uri)
