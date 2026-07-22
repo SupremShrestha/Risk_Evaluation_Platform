@@ -1,6 +1,11 @@
 from rest_framework import serializers
-from .models import Incident, Hazard
+from .models import Incident, Hazard, District
 
+
+class DistrictSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = District
+        fields = ["id", "title"]
 
 class HazardSerializer(serializers.ModelSerializer):
     class Meta:

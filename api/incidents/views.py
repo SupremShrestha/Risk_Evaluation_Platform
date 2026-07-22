@@ -1,11 +1,18 @@
 from django.shortcuts import render
 from rest_framework import generics
-from .models import Incident, Hazard
-from .serializers import IncidentSerializer, HazardSerializer
+from .models import Incident, Hazard, District
+from .serializers import IncidentSerializer, HazardSerializer, DistrictSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .ml_service import get_model_and_encoders, compute_prediction_features
+
+
+
+class DistrictListView(generics.ListAPIView):
+    queryset = District.objects.all().order_by("title")
+    serializer_class = DistrictSerializer
+    pagination_class = None  # only 77 districts total — no need to paginate
 
 class IncidentListView(generics.ListAPIView):
     queryset = Incident.objects.select_related("hazard").order_by("-incident_on")

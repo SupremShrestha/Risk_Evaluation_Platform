@@ -1,44 +1,35 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import IncidentsTable from "./IncidentsTable";
+import PredictionTool from "./PredictionTool";
 
 function App() {
-  const [incidents, setIncidents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("predict");
 
-  useEffect(() => {
-    fetch("http://localhost:8000/api/v1/incidents/")
-      .then((res) => res.json())
-      .then((data) => {
-        setIncidents(data.results);
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) return <p>Loading incidents...</p>;
+  const tabStyle = (tab) => ({
+    padding: "0.6rem 1.2rem",
+    cursor: "pointer",
+    border: "none",
+    borderBottom: activeTab === tab ? "3px solid #2563eb" : "3px solid transparent",
+    background: "none",
+    fontSize: "1rem",
+    fontWeight: activeTab === tab ? "600" : "400",
+    color: activeTab === tab ? "#111" : "#666",
+  });
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
+    <div style={{ fontFamily: "sans-serif", maxWidth: "1100px", margin: "0 auto", padding: "1rem" }}>
       <h1>BIPAD Risk Platform</h1>
-      <p>Showing {incidents.length} most recent incidents</p>
-      <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Hazard</th>
-            <th>Date</th>
-            <th>Verified</th>
-          </tr>
-        </thead>
-        <tbody>
-          {incidents.map((inc) => (
-            <tr key={inc.id}>
-              <td>{inc.title}</td>
-              <td style={{ color: inc.hazard?.color }}>{inc.hazard?.title}</td>
-              <td>{new Date(inc.incident_on).toLocaleDateString()}</td>
-              <td>{inc.verified ? "✅" : "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div style={{ borderBottom: "1px solid #ddd", marginBottom: "1.5rem" }}>
+        <button style={tabStyle("predict")} onClick={() => setActiveTab("predict")}>
+          Risk Predictor
+        </button>
+        <button style={tabStyle("incidents")} onClick={() => setActiveTab("incidents")}>
+          Recent Incidents
+        </button>
+      </div>
+
+      {activeTab === "predict" && <PredictionTool />}
+      {activeTab === "incidents" && <IncidentsTable />}
     </div>
   );
 }
