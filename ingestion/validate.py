@@ -2,17 +2,21 @@ import os
 import great_expectations as gx
 from great_expectations.core.batch import RuntimeBatchRequest
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv("../docker/.env")
+load_dotenv(Path(__file__).resolve().parent.parent / "docker" / ".env")
+
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5433")
 
 DB_URI = (
     f"postgresql+psycopg2://{os.getenv('POSTGRES_USER')}:"
-    f"{os.getenv('POSTGRES_PASSWORD')}@localhost:5433/"
+    f"{os.getenv('POSTGRES_PASSWORD')}@{DB_HOST}:{DB_PORT}/"
     f"{os.getenv('POSTGRES_DB')}"
 )
 
 def get_context():
-    context = gx.get_context(context_root_dir="great_expectations")
+    context = gx.get_context(context_root_dir="gx")
     return context
 
 def build_expectation_suite(context):

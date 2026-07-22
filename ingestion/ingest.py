@@ -9,7 +9,9 @@ import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
 
-load_dotenv("../docker/.env")
+from pathlib import Path
+
+load_dotenv(Path(__file__).resolve().parent.parent / "docker" / ".env")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -77,8 +79,8 @@ def extract_hazard_id(hazard):
 
 def get_db_connection():
     return psycopg2.connect(
-        host="localhost",
-        port=5433,
+        host=os.getenv("DB_HOST", "localhost"),
+        port=os.getenv("DB_PORT", "5433"),
         dbname=os.getenv("POSTGRES_DB"),
         user=os.getenv("POSTGRES_USER"),
         password=os.getenv("POSTGRES_PASSWORD"),
@@ -170,4 +172,4 @@ def run_ingestion(days_back: int = 30):
 
 
 if __name__ == "__main__":
-    run_ingestion(days_back=730)
+    run_ingestion(days_back=3)

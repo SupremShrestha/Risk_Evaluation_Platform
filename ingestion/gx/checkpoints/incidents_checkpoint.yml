@@ -1,0 +1,37 @@
+name: incidents_checkpoint
+config_version: 1.0
+template_name:
+module_name: great_expectations.checkpoint
+class_name: Checkpoint
+run_name_template:
+expectation_suite_name:
+batch_request: {}
+action_list:
+  - name: store_validation_result
+    action:
+      class_name: StoreValidationResultAction
+  - name: store_evaluation_params
+    action:
+      class_name: StoreEvaluationParametersAction
+  - name: update_data_docs
+    action:
+      class_name: UpdateDataDocsAction
+evaluation_parameters: {}
+runtime_configuration: {}
+validations:
+  - batch_request:
+      datasource_name: incidents_datasource
+      data_connector_name: default_runtime_data_connector
+      data_asset_name: incidents
+      runtime_parameters:
+        query: "\n                SELECT\n                    id, hazard_id, incident_on,
+          loss_id,\n                    ST_X(point) AS longitude,\n              \
+          \      ST_Y(point) AS latitude\n                FROM incidents\n       \
+          \     "
+      batch_identifiers:
+        default_identifier_name: incidents_batch
+      batch_spec_passthrough:
+    expectation_suite_name: incidents_suite
+profilers: []
+ge_cloud_id:
+expectation_suite_ge_cloud_id:
