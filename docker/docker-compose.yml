@@ -62,6 +62,7 @@ services:
     volumes:
       - ../ingestion:/opt/airflow/ingestion
       - ../ml:/opt/airflow/ml
+      - ../ml:/home/supremshrestha/bipad-risk-platform/ml
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
     command: webserver
@@ -86,6 +87,7 @@ services:
     volumes:
       - ../ingestion:/opt/airflow/ingestion
       - ../ml:/opt/airflow/ml
+      - ../ml:/home/supremshrestha/bipad-risk-platform/ml
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
     command: scheduler
