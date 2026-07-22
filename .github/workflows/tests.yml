@@ -1,0 +1,83 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  django-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: bipad_admin
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: bipad_risk
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install GDAL/GEOS (required for GeoDjango)
+        run: sudo apt-get update && sudo apt-get install -y gdal-bin libgdal-dev libgeos-dev
+
+      - name: Install dependencies
+        working-directory: api
+        run: pip install -r requirements.txt
+
+      - name: Run Django tests
+        working-directory: api
+        env:
+          POSTGRES_USER: bipad_admin
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: bipad_risk
+        run: python manage.py test
+
+  ingestion-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: ingestion
+        run: pip install requests psycopg2-binary python-dotenv
+
+      - name: Run ingestion unit tests
+        working-directory: ingestion
+        run: python test_helpers.py -v
+
+  ml-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: ml
+        run: pip install pandas
+
+      - name: Run feature engineering tests
+        working-directory: ml
+        run: python test_features.py -v
