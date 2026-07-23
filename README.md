@@ -42,41 +42,25 @@ for treating "month" and "historical seasonal average" as strong predictive
 features, confirmed in the raw data before any model was built.
 
 ## Architecture
-BIPAD API (government, undocumented, unreliable pagination)
-│
-▼
-┌─────────────────┐ ┌──────────────────┐
-│ Ingestion │────▶│ Great │
-│ (Python, │ │ Expectations │
-│ paginated, │ │ validation │
-│ idempotent) │ └──────────────────┘
-└─────────────────┘
-│
-▼
-┌─────────────────────────────────────────────┐
-│ PostgreSQL + PostGIS │
-│ incidents / hazards / districts / municip. │
-└─────────────────────────────────────────────┘
-│ │
-▼ ▼
-┌─────────────────┐ ┌──────────────────────┐
-│ Feature │ │ Django REST │
-│ engineering + │───▶│ Framework API │
-│ RandomForest │ │ (GeoDjango, live │
-│ (scikit-learn, │ │ model reload) │
-│ MLflow tracking) │ └──────────────────────┘
-└─────────────────┘ │
-▼
-┌──────────────────────┐
-│ React frontend │
-│ (predictor, table, │
-│ clustered map) │
-└──────────────────────┘
 
-Orchestration: Apache Airflow (Docker), two DAGs
+1. **BIPAD API** (government, undocumented, unreliable pagination) is polled by
+   the ingestion pipeline.
+2. **Ingestion** (Python, paginated, idempotent) writes validated records into
+   **PostgreSQL + PostGIS** (`incidents`, `hazards`, `districts`,
+   `municipalities` tables), after passing through **Great Expectations**
+   validation.
+3. **Feature engineering + Random Forest training** (scikit-learn, MLflow
+   tracking) reads from the database on a weekly schedule and produces a
+   trained model.
+4. **Django REST Framework API** (GeoDjango) serves both raw incident data
+   and live predictions — automatically reloading whenever a newer trained
+   model becomes available.
+5. **React frontend** (risk predictor, incidents table, clustered map)
+   consumes the API.
 
-bipad_daily_ingestion (@daily): ingest → validate
-bipad_weekly_retrain (@weekly): build features → retrain
+**Orchestration:** Apache Airflow (Docker), two scheduled DAGs:
+- `bipad_daily_ingestion` (`@daily`) — ingest → validate
+- `bipad_weekly_retrain` (`@weekly`) — build features → retrain
 
 ## Tech stack
 
