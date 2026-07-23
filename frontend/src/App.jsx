@@ -1,6 +1,7 @@
 import { useState } from "react";
 import IncidentsTable from "./IncidentsTable";
 import PredictionTool from "./PredictionTool";
+import IncidentMap from "./IncidentMap";
 
 function App() {
   const [activeTab, setActiveTab] = useState("predict");
@@ -26,10 +27,14 @@ function App() {
         <button style={tabStyle("incidents")} onClick={() => setActiveTab("incidents")}>
           Recent Incidents
         </button>
+        <button style={tabStyle("map")} onClick={() => setActiveTab("map")}>
+          Map View
+        </button>
       </div>
 
       {activeTab === "predict" && <PredictionTool />}
       {activeTab === "incidents" && <IncidentsTable />}
+      {activeTab === "map" && <IncidentMap />}
     </div>
   );
 }

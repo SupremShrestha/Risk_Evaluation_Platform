@@ -31,3 +31,19 @@ class IncidentSerializer(serializers.ModelSerializer):
 
     def get_longitude(self, obj):
         return obj.point.x if obj.point else None
+
+class IncidentMapSerializer(serializers.ModelSerializer):
+    hazard_title = serializers.CharField(source="hazard.title", default=None)
+    hazard_color = serializers.CharField(source="hazard.color", default=None)
+    latitude = serializers.SerializerMethodField()
+    longitude = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Incident
+        fields = ["id", "latitude", "longitude", "hazard_title", "hazard_color", "incident_on"]
+
+    def get_latitude(self, obj):
+        return obj.point.y if obj.point else None
+
+    def get_longitude(self, obj):
+        return obj.point.x if obj.point else None

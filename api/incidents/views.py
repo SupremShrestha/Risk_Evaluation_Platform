@@ -1,13 +1,11 @@
 from django.shortcuts import render
 from rest_framework import generics
 from .models import Incident, Hazard, District
-from .serializers import IncidentSerializer, HazardSerializer, DistrictSerializer
+from .serializers import IncidentSerializer, HazardSerializer, DistrictSerializer, IncidentMapSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .ml_service import get_model_and_encoders, compute_prediction_features
-
-
 
 class DistrictListView(generics.ListAPIView):
     queryset = District.objects.all().order_by("title")
@@ -83,3 +81,8 @@ class PredictRiskView(APIView):
                 "historical_month_avg": round(historical_month_avg, 2),
             },
         })
+        
+class IncidentMapListView(generics.ListAPIView):
+    queryset = Incident.objects.filter(point__isnull=False).select_related("hazard")
+    serializer_class = IncidentMapSerializer
+    pagination_class = None

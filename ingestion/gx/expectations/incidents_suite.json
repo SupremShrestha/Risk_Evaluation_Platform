@@ -113,7 +113,7 @@
       "expectation_type": "expect_column_values_to_be_between",
       "kwargs": {
         "column": "incident_on",
-        "max_value": "2026-07-22T03:43:22.564897+00:00",
+        "max_value": "2026-07-23T01:52:10.055417+00:00",
         "min_value": null,
         "mostly": 1.0
       },
