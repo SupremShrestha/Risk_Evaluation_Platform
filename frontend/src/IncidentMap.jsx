@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 
 const NEPAL_CENTER = [28.3949, 84.1240];
 
@@ -30,6 +31,7 @@ function IncidentMap() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <MarkerClusterGroup chunkedLoading>
         {incidents
           .filter((inc) => inc.latitude && inc.longitude)
           .map((inc) => (
@@ -50,6 +52,7 @@ function IncidentMap() {
               </Popup>
             </CircleMarker>
           ))}
+        </MarkerClusterGroup>
       </MapContainer>
     </div>
   );
