@@ -1,33 +1,26 @@
 import { useEffect, useState } from "react";
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
+import {
+  MONTHS, MONTHS_SHORT, HAZARD_COLORS, TRAINED_HAZARDS,
+  SEASONAL_INTENSITY, API_BASE,
+} from "./constants";
 
 function PredictionTool() {
   const [districts, setDistricts] = useState([]);
-  const [hazards, setHazards] = useState([]);
   const [district, setDistrict] = useState("");
-  const [hazard, setHazard] = useState("");
+  const [hazard, setHazard] = useState(TRAINED_HAZARDS[0]);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const TRAINED_HAZARDS = ["Landslide", "Snake Bite", "Fire", "Flood"];
-
   useEffect(() => {
-    fetch("http://localhost:8000/api/v1/districts/")
+    fetch(`${API_BASE}/api/v1/districts/`)
       .then((res) => res.json())
       .then((data) => {
         setDistricts(data);
         if (data.length) setDistrict(data[0].title);
       });
-
-    setHazards(TRAINED_HAZARDS.map((title, id) => ({ id, title })));
-    setHazard(TRAINED_HAZARDS[0]);
   }, []);
 
   const handlePredict = async () => {
@@ -35,7 +28,7 @@ function PredictionTool() {
     setError(null);
     setResult(null);
     try {
-      const res = await fetch("http://localhost:8000/api/v1/predict/", {
+      const res = await fetch(`${API_BASE}/api/v1/predict/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ district, hazard, year, month }),
@@ -51,78 +44,112 @@ function PredictionTool() {
   };
 
   const riskLevel = (count) => {
-    if (count < 2) return { label: "Low", color: "#16a34a" };
-    if (count < 6) return { label: "Moderate", color: "#d97706" };
-    return { label: "High", color: "#dc2626" };
+    if (count < 2) return { label: "Low", color: "var(--ok)" };
+    if (count < 6) return { label: "Moderate", color: "#a3760f" };
+    return { label: "High", color: "var(--danger)" };
   };
+
+  const hazardColor = HAZARD_COLORS[hazard] || "var(--ink)";
+  const maxIntensity = Math.max(...SEASONAL_INTENSITY);
 
   return (
     <div>
-      <p style={{ color: "#555" }}>
-        Predicted incident count for a given district, hazard, and month — based on
-        historical seasonal patterns and recent trends.
-      </p>
-
-      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "1.5rem" }}>
-        <label>
-          District<br />
-          <select value={district} onChange={(e) => setDistrict(e.target.value)}>
-            {districts.map((d) => (
-              <option key={d.id} value={d.title}>{d.title}</option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Hazard<br />
-          <select value={hazard} onChange={(e) => setHazard(e.target.value)}>
-            {hazards.map((h) => (
-              <option key={h.id} value={h.title}>{h.title}</option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Month<br />
-          <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-            {MONTHS.map((m, i) => (
-              <option key={i} value={i + 1}>{m}</option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Year<br />
-          <input
-            type="number"
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            style={{ width: "80px" }}
-          />
-        </label>
-
-        <button onClick={handlePredict} disabled={loading} style={{ alignSelf: "flex-end", padding: "0.4rem 1rem" }}>
-          {loading ? "Predicting..." : "Predict Risk"}
-        </button>
+      <div className="page-header">
+        <h1 className="page-title">Risk Predictor</h1>
+        <p className="page-desc">
+          Expected incident count for a given district, hazard, and month —
+          based on historical seasonal patterns and recent trends.
+        </p>
       </div>
 
-      {error && <p style={{ color: "#dc2626" }}>Error: {error}</p>}
+      <div className="panel">
+        <div className="field-row">
+          <div className="field">
+            <label className="field-label">District</label>
+            <select value={district} onChange={(e) => setDistrict(e.target.value)}>
+              {districts.map((d) => (
+                <option key={d.id} value={d.title}>{d.title}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field">
+            <label className="field-label">Hazard</label>
+            <select value={hazard} onChange={(e) => setHazard(e.target.value)}>
+              {TRAINED_HAZARDS.map((h) => (
+                <option key={h} value={h}>{h}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field">
+            <label className="field-label">Month</label>
+            <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+              {MONTHS.map((m, i) => (
+                <option key={i} value={i + 1}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field">
+            <label className="field-label">Year</label>
+            <input
+              type="number"
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+            />
+          </div>
+
+          <button className="btn-primary" onClick={handlePredict} disabled={loading}>
+            {loading ? "Predicting…" : "Predict Risk"}
+          </button>
+        </div>
+
+        <div className="season-strip">
+          <div className="season-strip-label">Typical seasonal pattern — {hazard}</div>
+          <div className="season-strip-bars">
+            {MONTHS_SHORT.map((label, i) => {
+              const isSelected = i + 1 === month;
+              const heightPct = Math.max(8, (SEASONAL_INTENSITY[i] / maxIntensity) * 100);
+              return (
+                <div className="season-bar-wrap" key={i}>
+                  <div
+                    className={`season-bar${isSelected ? " selected" : ""}`}
+                    style={{ height: `${heightPct}%`, "--hazard-color": hazardColor }}
+                  />
+                  <span className={`season-bar-month${isSelected ? " selected" : ""}`}>{label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="contour-rule" />
+
+      {error && <div className="error-banner">{error}</div>}
 
       {result && (
-        <div style={{ border: "1px solid #ddd", borderRadius: "8px", padding: "1.5rem", maxWidth: "500px" }}>
-          <h3>{result.district} — {result.hazard}</h3>
-          <p>{MONTHS[result.month - 1]} {result.year}</p>
-          <p style={{ fontSize: "2rem", fontWeight: "bold", color: riskLevel(result.predicted_incident_count).color }}>
-            {result.predicted_incident_count} incidents predicted
-          </p>
-          <p style={{ color: riskLevel(result.predicted_incident_count).color, fontWeight: "600" }}>
-            Risk level: {riskLevel(result.predicted_incident_count).label}
-          </p>
-          <hr />
-          <p style={{ fontSize: "0.85rem", color: "#666" }}>
-            Based on: {result.features_used.prev_month_count} incidents last month,
+        <div
+          className="result-card"
+          style={{ "--hazard-color": hazardColor }}
+        >
+          <div className="result-heading">{result.district} · {result.hazard}</div>
+          <div className="mono" style={{ fontSize: "0.8rem", marginBottom: 2 }}>
+            {MONTHS[result.month - 1]} {result.year}
+          </div>
+          <div className="result-count">{result.predicted_incident_count}</div>
+          <div className="result-count-label">incidents predicted</div>
+          <span
+            className="risk-pill"
+            style={{ "--pill-color": riskLevel(result.predicted_incident_count).color }}
+          >
+            {riskLevel(result.predicted_incident_count).label} risk
+          </span>
+          <div className="result-detail">
+            Based on {result.features_used.prev_month_count} incidents last month ·
             historical average of {result.features_used.historical_month_avg} for this month
-          </p>
+          </div>
         </div>
       )}
     </div>
