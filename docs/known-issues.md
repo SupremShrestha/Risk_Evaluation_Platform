@@ -72,6 +72,22 @@ literal original host absolute path inside the Airflow containers.
 that runs `validate.py`.** 0.18.x and 1.x have incompatible `great_expectations.yml`
 config schemas — pin the exact version (`great-expectations==0.18.22`) everywhere.
 
+**CHIRPS v3 (`UCSB-CHC/CHIRPS/V3/DAILY_RNL`, via Google Earth Engine) has real,
+scattered coverage gaps — not just a "too recent" tail.** Roughly 4% of the 739
+distinct incident dates (spanning mid-2020 to Aug 2026) return zero images from the
+collection, concentrated in the most recent ~6 weeks (early-to-mid July and early
+August 2026) but not perfectly contiguous — isolated working dates appear inside
+otherwise-missing stretches, and repeated runs on the same dates return slightly
+different results as the near-real-time product continues backfilling over time.
+Net effect: ~93% of incidents get a usable rainfall feature; the rest are left
+NULL rather than backfilled with a guess. BIPAD's own realtime rain/river/road
+station API (`rain-stations/`, `river-stations/`) was investigated first and ruled
+out as a historical rainfall source — it's confirmed snapshot-only (`averages`
+give current 1/3/6/12/24hr accumulations, no per-reading history, no working date
+filter despite exposing one that silently no-ops). DHM's own historical archive
+(`dhm.gov.np`) exists but is a paid, request-based product, not a scriptable API —
+not practical for this project's timeline.
+
 ## Docker / Airflow
 
 **The Airflow container runs as a different UID (50000) than the host user.** Any
@@ -123,3 +139,5 @@ it runs exclusively inside Docker, sidestepping host Python version compatibilit
   pragmatic `chmod o+w` rather than a more precise shared-group setup — a
   reasonable tradeoff for a solo local-dev project, not how a multi-developer or
   production setup would typically handle it.
+
+  
