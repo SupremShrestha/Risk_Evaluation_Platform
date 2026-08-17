@@ -1,143 +1,53 @@
-# Known Issues & Lessons Learned
+## Cascading Hazard Model (Rainfall Lead-Lag)
+**Iterative model development, documented in full rather than just the final
+number, since each step's contribution is itself informative.**
 
-A running log of real bugs found and fixed while building this project — kept as a
-reference so they don't get silently reintroduced, and as an honest record of the
-debugging that went into this system.
+Built a binary classifier predicting whether a hazard incident occurs in a
+district on a given day, using rainfall features from CHIRPS v3 (see
+"Feature Engineering / External Data" above) plus district and seasonality.
+Negative (non-incident) samples were drawn ~2:1 against positives, at each
+district's incident-centroid location, across the same historical date range.
 
-## Ingestion
+Progression (ROC-AUC on an identical, untouched 20% held-out test set
+throughout):
 
-**BIPAD's pagination `next` field is unreliable.** It can remain non-null even after
-all real data has been returned — hit this bug three separate times, across
-`ingest.py`, `load_hazards.py`, and `load_geo_lookups.py`. The fix is always the
-same: check `if not results: break` before trusting `next`, never rely on `next`
-alone to know when to stop paginating.
+| Model                                          | ROC-AUC |
+|-------------------------------------------------|---------|
+| Threshold rule (best single rain cutoff)         | 0.514   |
+| Logistic regression (rainfall only)              | 0.525   |
+| Logistic regression (district only)              | 0.604   |
+| Logistic regression (rainfall + district)        | 0.617   |
+| Gradient boosting (rain sum + district)          | 0.639   |
+| + peak single-day rainfall intensity (7d window) | 0.644   |
+| + month/seasonality feature                      | 0.677   |
+| + hyperparameter tuning (5-fold CV random search) | **0.708** |
 
-**URL query strings must be built with `params=dict`, never raw string
-concatenation.** The `+` character in ISO datetime strings (e.g.
-`2026-06-19T17:02:42+00:00`) gets silently misinterpreted as a space when
-concatenated into a URL manually, since `+` is a reserved character meaning "space"
-in `application/x-www-form-urlencoded` encoding. `requests.get(url, params=...)`
-handles this correctly automatically.
+**Key findings, in order of how they were discovered:**
+- Same-day/summed rainfall alone is a weak signal (ROC-AUC ~0.52, barely above
+  chance) — the naive threshold-based approach degenerates to "always predict
+  positive" because rainfall is heavily zero-inflated and the positive/negative
+  distributions overlap too much for any single cutoff to separate them.
+- District identity alone (0.604) explains far more variance than rainfall
+  alone (0.525) — baseline geographic/exposure risk dominates short-term
+  weather signal at this feature granularity.
+- Peak single-day rainfall intensity (not just cumulative sum) adds real,
+  independent signal — physically sensible, since a hillslope responds
+  differently to one intense storm than the same total spread over a week.
+- **Seasonality (month) was the single largest missing feature** — adding it
+  produced the second-largest jump in the whole progression, larger than any
+  rainfall-window refinement. Confounds with rainfall itself (monsoon months
+  have more rain), which is why every rainfall feature's individual importance
+  dropped once month was added — the model's understanding became more
+  accurate, not that rainfall stopped mattering.
+- Hyperparameter tuning (via 5-fold CV `RandomizedSearchCV`, tuned only on the
+  training set, test set touched exactly once at the end) gave the largest
+  single jump (+0.031) — CV and test scores stayed close (0.712 vs 0.708),
+  confirming this was genuine generalization, not overfitting to noise.
 
-**Fields from the BIPAD API can arrive as either a plain integer ID or a fully
-expanded nested object**, depending on whether `expand=` was included in the
-request (e.g. `loss` can be `464323` or `{"id": 464323, "deaths": 0, ...}`).
-Defensive helper functions (`extract_loss_id`, `extract_hazard_id`) normalize this.
-
-## Database / Schema
-
-**Adding a foreign key to an already-populated table requires the referenced table
-to be populated first**, or the constraint fails immediately against existing
-mismatched data. Always: create table → populate lookup table → THEN add the FK.
-
-## Django / GeoDjango
-
-**GeoDjango requires `django.contrib.gis.db.backends.postgis` as the database
-`ENGINE`**, not the plain `django.db.backends.postgresql` — using the wrong one
-causes `AttributeError: 'DatabaseOperations' object has no attribute 'select'` the
-moment any spatial field is queried through the ORM.
-
-**Models with `managed = False` get no auto-created tables in Django's ephemeral
-test database.** `manage.py test` builds a fresh, empty test DB from migrations —
-since unmanaged models generate no `CreateModel` migration operations, their tables
-simply don't exist during tests, causing `relation "X" does not exist`. Fixed with
-an explicit `migrations.RunSQL(...)` migration that creates the tables regardless
-of the `managed` setting.
-
-## ML / Feature Engineering
-
-**The feature grid must be built from actual observed `(year, month)` pairs in the
-data, never a full Cartesian product of `all_years × range(1,13)`.** The naive
-version silently invented nonexistent months (e.g. Oct–Dec 2026, which hadn't
-happened yet, since 2026 only had data through July) with zero-filled counts. This
-corrupted both training data and, more seriously, the evaluation holdout — the
-model appeared to work (MAE looked fine) while actually being evaluated against
-fabricated all-zero months, producing a meaningless R²=0.000 that looked plausible
-until inspected closely. Fixed by deriving the grid from
-`df[["year","month"]].drop_duplicates()`.
-
-**Training-time and serving-time feature computation must stay in sync.**
-`ml/build_features.py` and `api/incidents/ml_service.py::compute_prediction_features`
-independently compute `prev_month_count` and `historical_month_avg` — any drift
-between the two would silently degrade prediction quality without erroring.
-
-**MLflow bakes the absolute artifact storage path into its tracking database at
-experiment-creation time.** Training from a different environment (e.g. inside a
-Docker container) than where the experiment was first created requires that exact
-original absolute host path to be reachable — not just an equivalent, differently
-mounted path. Fixed by mounting the ML folder at both `/opt/airflow/ml` and the
-literal original host absolute path inside the Airflow containers.
-
-**Great Expectations major version must match exactly between every environment
-that runs `validate.py`.** 0.18.x and 1.x have incompatible `great_expectations.yml`
-config schemas — pin the exact version (`great-expectations==0.18.22`) everywhere.
-
-**CHIRPS v3 (`UCSB-CHC/CHIRPS/V3/DAILY_RNL`, via Google Earth Engine) has real,
-scattered coverage gaps — not just a "too recent" tail.** Roughly 4% of the 739
-distinct incident dates (spanning mid-2020 to Aug 2026) return zero images from the
-collection, concentrated in the most recent ~6 weeks (early-to-mid July and early
-August 2026) but not perfectly contiguous — isolated working dates appear inside
-otherwise-missing stretches, and repeated runs on the same dates return slightly
-different results as the near-real-time product continues backfilling over time.
-Net effect: ~93% of incidents get a usable rainfall feature; the rest are left
-NULL rather than backfilled with a guess. BIPAD's own realtime rain/river/road
-station API (`rain-stations/`, `river-stations/`) was investigated first and ruled
-out as a historical rainfall source — it's confirmed snapshot-only (`averages`
-give current 1/3/6/12/24hr accumulations, no per-reading history, no working date
-filter despite exposing one that silently no-ops). DHM's own historical archive
-(`dhm.gov.np`) exists but is a paid, request-based product, not a scriptable API —
-not practical for this project's timeline.
-
-## Docker / Airflow
-
-**The Airflow container runs as a different UID (50000) than the host user.** Any
-folder the container needs to write to must be host-writable by "other" users
-(`chmod o+w`), including: `docker/airflow/logs/`, `ingestion/gx/` (and its
-subfolders), `ml/data/`, `ml/artifacts/`, `ml/mlflow.db` and its *containing
-directory* (SQLite needs directory write access for its journal files, not just the
-`.db` file itself). `docker/airflow/dags/` is the exception — kept host-owned since
-only the host edits DAG files; the container only needs read access.
-
-**`docker compose restart` does not reapply changed environment variables or
-`_PIP_ADDITIONAL_REQUIREMENTS`.** Only `docker compose down` + `up -d` (or
-`up -d --force-recreate`) actually recreates containers with an updated
-`docker-compose.yml`. This cost significant debugging time — a container that
-*looked* freshly started could still be running with stale config.
-
-**`localhost` inside a container refers to the container itself, not the host or
-other containers.** Cross-container database access must use the Postgres
-service's name (`postgres`) and internal port (`5432`), not the host-mapped
-`localhost:5433`. All scripts read `DB_HOST`/`DB_PORT` env vars with
-`localhost`/`5433` as defaults, so local (non-containerized) runs are unaffected.
-
-## CI
-
-**Importing a module for testing also triggers all of that module's other,
-unrelated imports.** `test_features.py` imports `build_full_grid` from
-`build_features.py`, which also imports `psycopg2`, `sqlalchemy`, and `dotenv` at
-module level for an unrelated function — even though the test never touches the
-database. CI dependency lists must cover a module's full import chain, not just
-what the specific test logically needs.
-
-## Environment
-
-**Python 3.14 (bleeding-edge at the time of building this) caused repeated
-friction**: numpy required a C++ compiler to build from source (no prebuilt wheel
-yet), MLflow's own bundled web UI is broken on it entirely (unrelated to this
-project — an `importlib.abc.Traversable` import error in MLflow's optional
-assistant feature), and Apache Airflow was not run locally at all for this reason —
-it runs exclusively inside Docker, sidestepping host Python version compatibility.
-
-## Acknowledged design tradeoffs (not bugs, but worth noting)
-
-- `build_features.py` mixes pure data-transformation logic with I/O
-  (database-fetching) in one file. Splitting these would clean up the CI dependency
-  issue noted above, but wasn't necessary for this project's scope.
-- The frontend's risk-level thresholds (`riskLevel()` in `PredictionTool.jsx`) are
-  hand-picked for illustrative purposes, not statistically derived or calibrated.
-- Folder permissions between the Airflow container and host are managed with a
-  pragmatic `chmod o+w` rather than a more precise shared-group setup — a
-  reasonable tradeoff for a solo local-dev project, not how a multi-developer or
-  production setup would typically handle it.
-
-  
+**Honest limitation:** 0.708 ROC-AUC is a real, moderate predictor — useful as
+a risk-elevation signal, not a reliable early-warning system on its own.
+District geometry doesn't exist in this schema (only lookup tables), so every
+location used here is a district-incident centroid, not a true polygon
+average or the actual point of risk — a real source of noise that finer
+spatial resolution (ward-level, or true district boundaries) would likely
+improve on.
