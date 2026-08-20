@@ -1,11 +1,13 @@
 import { useState } from "react";
 import IncidentsTable from "./IncidentsTable";
 import PredictionTool from "./PredictionTool";
+import HazardPredictor from "./HazardPredictor";
 import IncidentMap from "./IncidentMap";
 import { MONTHS } from "./constants";
 
 const TABS = [
   { key: "predict", label: "Risk Predictor" },
+  { key: "hazard", label: "Hazard Risk (Rainfall)" },
   { key: "incidents", label: "Recent Incidents" },
   { key: "map", label: "Map View" },
 ];
@@ -51,6 +53,7 @@ function App() {
 
       <main className="main">
         {activeTab === "predict" && <PredictionTool />}
+        {activeTab === "hazard" && <HazardPredictor />}
         {activeTab === "incidents" && <IncidentsTable />}
         {activeTab === "map" && <IncidentMap />}
       </main>
