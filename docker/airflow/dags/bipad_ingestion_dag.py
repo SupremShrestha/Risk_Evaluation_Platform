@@ -28,4 +28,13 @@ with DAG(
         bash_command="cd /opt/airflow/ingestion && python validate.py",
     )
 
+    # Feeds the lead-lag hazard model's live prediction endpoint. Independent
+    # of incident ingestion (district centroids come from the already-built
+    # incident_rainfall_negatives table, not from today's freshly-ingested
+    # incidents), so it runs in parallel rather than chained after validate.
+    fetch_rainfall_task = BashOperator(
+        task_id="fetch_daily_rainfall",
+        bash_command="cd /opt/airflow/ingestion && python fetch_daily_rainfall.py",
+    )
+
     ingest_task >> validate_task

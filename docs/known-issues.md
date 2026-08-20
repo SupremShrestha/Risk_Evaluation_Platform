@@ -93,3 +93,26 @@ which satisfies both mlflow and the original boto3 constraint. mlflow is now
 pinned to `3.15.1` consistently across `ml/.venv`, `requirements.txt`, and
 `docker-compose.yml`; the lead-lag model's `train_leadlag.py` now shares the
 same `mlflow.db` as `train.py` instead of a separate workaround db.
+
+**Deploying fetch_daily_rainfall.py to Airflow surfaced three real
+container-specific issues, all resolved.** (1) Hardcoded host="localhost",
+port=5433 in the script -- same class of bug as the known "localhost inside
+a container != host" issue; fixed by reading DB_HOST/DB_PORT/POSTGRES_* from
+env vars, matching the pattern docker-compose.yml already injects into the
+Airflow containers. (2) earthengine-api was never in Airflow's
+_PIP_ADDITIONAL_REQUIREMENTS (only existed in the host ingestion/.venv) --
+added it. (3) GEE credentials only exist on the host
+(~/.config/earthengine/credentials); mounted read-only into both Airflow
+containers, and had to loosen the file's permissions to be group/other
+readable since it's owned by the host UID but the container runs as UID
+50000. Separately: the DAG file itself needed `chmod o+r` after being
+replaced -- same permission-mismatch category as the credentials file, not
+a new issue.
+
+**Real limitation, not a bug: CHIRPS near-real-time backfill lag means
+"today"'s rainfall data usually isn't available yet.** Tested
+fetch_daily_rainfall.py for a date ~18 days back and got zero districts with
+complete data; a date from months back worked cleanly for all 77 districts.
+This means PredictHazardView will 404 for genuinely recent dates until
+CHIRPS backfills -- expected behavior given the known coverage-gap issue
+documented above, not something to "fix" further.

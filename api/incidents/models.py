@@ -63,3 +63,21 @@ class Incident(models.Model):
         District, on_delete=models.DO_NOTHING, db_column="district_id", null=True
     )
     
+class DistrictDailyRainfall(models.Model):
+    id = models.IntegerField(primary_key=True)
+    district = models.ForeignKey(
+        District, on_delete=models.DO_NOTHING, db_column="district_id"
+    )
+    sample_date = models.DateField()
+    rain_1d = models.DecimalField(max_digits=10, decimal_places=4, null=True)
+    rain_3d = models.DecimalField(max_digits=10, decimal_places=4, null=True)
+    rain_7d = models.DecimalField(max_digits=10, decimal_places=4, null=True)
+    rain_peak_7d = models.DecimalField(max_digits=10, decimal_places=4, null=True)
+    ingested_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "district_daily_rainfall"
+
+    def __str__(self):
+        return f"{self.district_id} rainfall on {self.sample_date}"

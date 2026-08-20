@@ -1,11 +1,13 @@
 from django.shortcuts import render
 from rest_framework import generics
-from .models import Incident, Hazard, District
+from .models import Incident, Hazard, District, DistrictDailyRainfall
 from .serializers import IncidentSerializer, HazardSerializer, DistrictSerializer, IncidentMapSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .ml_service import get_model_and_encoders, compute_prediction_features
+from .ml_service import get_model_and_encoders, compute_prediction_features, get_leadlag_model, get_leadlag_features
+from datetime import datetime
+
 
 class DistrictListView(generics.ListAPIView):
     queryset = District.objects.all().order_by("title")
@@ -86,3 +88,79 @@ class IncidentMapListView(generics.ListAPIView):
     queryset = Incident.objects.filter(point__isnull=False).select_related("hazard")
     serializer_class = IncidentMapSerializer
     pagination_class = None
+    
+class PredictHazardView(APIView):
+    """
+    Predicts hazard risk (probability of an incident occurring) for a
+    district on a given date, using the lead-lag rainfall model.
+
+    Unlike PredictRiskView (which predicts a monthly incident COUNT for a
+    future month), this predicts a same/near-term-day binary risk
+    PROBABILITY, driven by precomputed rainfall features. Deliberately a
+    separate endpoint rather than folded into PredictRiskView -- different
+    model type (classifier vs regressor), different feature set, different
+    semantics of the output.
+    """
+    def post(self, request):
+        district_name = request.data.get("district")
+        date_str = request.data.get("date")
+
+        if not all([district_name, date_str]):
+            return Response(
+                {"error": "district and date are both required (date as YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return Response(
+                {"error": "date must be in YYYY-MM-DD format."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            district = District.objects.get(title=district_name)
+        except District.DoesNotExist:
+            return Response(
+                {"error": f"Unknown district: {district_name}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        features = get_leadlag_features(district.id, target_date)
+        if features is None:
+            return Response(
+                {"error": f"No rainfall data available for {district_name} on {date_str}. "
+                          f"This means the daily ingestion DAG hasn't run for that date yet, "
+                          f"or CHIRPS had a coverage gap for that window."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        model = get_leadlag_model()
+
+        import pandas as pd
+        feature_row = pd.DataFrame([{
+            "rain_1d": features["rain_1d"],
+            "rain_3d": features["rain_3d"],
+            "rain_7d": features["rain_7d"],
+            "rain_peak_7d": features["rain_peak_7d"],
+            "month": features["month"],
+            "district_id": features["district_id"],
+        }])
+
+        risk_probability = float(model.predict_proba(feature_row)[0][1])
+
+        return Response({
+            "district": district_name,
+            "date": date_str,
+            "risk_probability": round(risk_probability, 3),
+            "features_used": {
+                "rain_1d": round(features["rain_1d"], 2),
+                "rain_3d": round(features["rain_3d"], 2),
+                "rain_7d": round(features["rain_7d"], 2),
+                "rain_peak_7d": round(features["rain_peak_7d"], 2),
+            },
+            "note": "This is a probability from a moderate-accuracy model "
+                    "(time-based validation ROC-AUC 0.580) -- treat as a "
+                    "risk-elevation signal, not a precise forecast.",
+        })

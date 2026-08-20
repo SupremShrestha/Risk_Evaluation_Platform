@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import IncidentListView, HazardListView
 from django.urls import path
-from .views import IncidentListView, HazardListView, PredictRiskView, DistrictListView, IncidentMapListView
+from .views import IncidentListView, HazardListView, PredictRiskView, DistrictListView, IncidentMapListView, PredictHazardView
 
 urlpatterns = [
     path("incidents/", IncidentListView.as_view(), name="incident-list"),
@@ -9,4 +9,5 @@ urlpatterns = [
     path("districts/", DistrictListView.as_view(), name="district-list"),
     path("predict/", PredictRiskView.as_view(), name="predict-risk"),
     path("incidents/map/", IncidentMapListView.as_view(), name="incident-map"),
+    path("predict-hazard/", PredictHazardView.as_view(), name="predict-hazard"),
 ]
