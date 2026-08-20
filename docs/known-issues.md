@@ -71,17 +71,25 @@ model's real performance; 0.708 (random split) remains useful only for
 comparing model architectures against each other under identical, consistent
 methodology, not as the model's honest headline result.**
 
-**MLflow is unpinned in Airflow's `_PIP_ADDITIONAL_REQUIREMENTS`, same class
-of risk as the earlier `great-expectations`/`cryptography` incident.**
-Discovered while integrating the lead-lag model into MLflow tracking: the
-host `ml/.venv`'s freshly-installed mlflow (3.14.0) could not read
-`mlflow.db`'s existing schema revision at all ("no such revision"), meaning
-host and Airflow-container mlflow versions have silently drifted apart at
-some point, with no pinned version to guarantee otherwise. Did not attempt to
-force a migration against `mlflow.db` given the uncertainty and the real risk
-to the existing model's run history -- backed it up
-(`mlflow.db.backup-20260817`) and left it untouched. The new lead-lag model
-uses its own separate `mlflow_leadlag.db` instead. **Unresolved**: mlflow
-should be pinned to a specific version in both `docker-compose.yml` and
-`ml/.venv`'s requirements, and `mlflow.db`'s actual compatible version should
-be identified before any future migration is attempted.
+**MLflow was unpinned in Airflow's `_PIP_ADDITIONAL_REQUIREMENTS`, same class
+of risk as the earlier `great-expectations`/`cryptography` incident -- root
+cause identified and resolved.** While integrating the lead-lag model into
+MLflow tracking, the host `ml/.venv`'s freshly-installed mlflow (3.14.0)
+could not read `mlflow.db`'s existing schema revision at all ("no such
+revision"). Root cause: `mlflow.db` had actually been migrated by a *newer*
+mlflow release (3.15.1, revision `6f8d9c3b2a1e` -- confirmed by pulling
+3.15.1's own migration source and finding the revision there but not in
+3.14.0's) than what was installed -- not the reverse, and not corruption.
+Backed up `mlflow.db` first (`mlflow.db.backup-20260817`, since deleted after
+confirming success) before upgrading `ml/.venv` to 3.15.1 and running
+`mlflow db upgrade`, which completed cleanly with the original two
+experiments and all run history intact and readable via the normal API.
+Pinning `mlflow==3.15.1` in Airflow's `_PIP_ADDITIONAL_REQUIREMENTS` then
+surfaced a second, real dependency conflict: mlflow 3.15.1 requires
+`cryptography>=43.0.0`, incompatible with the `pyopenssl==23.2.0`/
+`cryptography==41.0.7` pins from the earlier boto3 drift fix. Resolved by
+moving those two pins forward to `pyopenssl==24.2.1`/`cryptography==43.0.3`,
+which satisfies both mlflow and the original boto3 constraint. mlflow is now
+pinned to `3.15.1` consistently across `ml/.venv`, `requirements.txt`, and
+`docker-compose.yml`; the lead-lag model's `train_leadlag.py` now shares the
+same `mlflow.db` as `train.py` instead of a separate workaround db.

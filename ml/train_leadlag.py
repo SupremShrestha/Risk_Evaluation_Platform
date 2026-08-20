@@ -54,15 +54,12 @@ def train_and_evaluate():
     X_train, y_train = train_df[FEATURE_COLS], train_df[TARGET_COL]
     X_test, y_test = test_df[FEATURE_COLS], test_df[TARGET_COL]
 
-    # Uses a SEPARATE tracking database from the existing model's mlflow.db.
-    # Discovered during this run: mlflow is unpinned in Airflow's
-    # _PIP_ADDITIONAL_REQUIREMENTS (docker-compose.yml), and this host venv's
-    # freshly-installed mlflow (3.14.0) can't read mlflow.db's schema revision
-    # at all ("no such revision") -- meaning there's no reliable single mlflow
-    # version this project can currently assume across host/container. Forcing
-    # a migration against an assumed-compatible version risks corrupting the
-    # existing model's real run history for uncertain gain. See known-issues.md.
-    mlflow.set_tracking_uri("sqlite:///mlflow_leadlag.db")
+    # mlflow.db was migrated by mlflow 3.15.1 (ahead of the 3.14.0 that was
+    # installed at the time -- root cause of the earlier "no such revision"
+    # error). mlflow is now pinned to 3.15.1 in ml/.venv, requirements.txt,
+    # and docker-compose.yml, so this shares the same tracking db as train.py.
+    # See known-issues.md for the full resolution.
+    mlflow.set_tracking_uri("sqlite:///mlflow.db")
     mlflow.set_experiment("bipad-hazard-leadlag")
 
     with mlflow.start_run():
