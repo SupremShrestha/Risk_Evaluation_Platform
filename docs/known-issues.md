@@ -51,3 +51,37 @@ location used here is a district-incident centroid, not a true polygon
 average or the actual point of risk — a real source of noise that finer
 spatial resolution (ward-level, or true district boundaries) would likely
 improve on.
+**Random train/test splits overestimate performance for spatiotemporal data --
+caught via a deliberate methodology check.** The cascading hazard model above
+was first evaluated with an 80/20 *random* stratified split (yielding
+ROC-AUC 0.708 after tuning). Re-evaluating under a *time-based* split (train
+on all but the most recent ~20% of distinct dates, test only on that unseen
+future window) -- consistent with `train.py`'s own stated principle that this
+is "the only honest way to evaluate a forecasting model" -- dropped ROC-AUC to
+**0.580**. The gap is real, not noise: a random split lets chronologically
+adjacent events (the same storm system, similar seasonal conditions a few
+days apart) land on both sides of the split, letting the model implicitly
+exploit information it wouldn't have at real prediction time. The relative
+ranking of rainfall features also shifted under the honest split --
+`rain_peak_7d` and `rain_7d` became more important than `month`, whereas
+`month` dominated under the random split, suggesting the random-split model
+was partly leaning on a seasonal shortcut a true future-unseen test doesn't
+allow. **0.580 (time-based split) is the number that should be quoted as this
+model's real performance; 0.708 (random split) remains useful only for
+comparing model architectures against each other under identical, consistent
+methodology, not as the model's honest headline result.**
+
+**MLflow is unpinned in Airflow's `_PIP_ADDITIONAL_REQUIREMENTS`, same class
+of risk as the earlier `great-expectations`/`cryptography` incident.**
+Discovered while integrating the lead-lag model into MLflow tracking: the
+host `ml/.venv`'s freshly-installed mlflow (3.14.0) could not read
+`mlflow.db`'s existing schema revision at all ("no such revision"), meaning
+host and Airflow-container mlflow versions have silently drifted apart at
+some point, with no pinned version to guarantee otherwise. Did not attempt to
+force a migration against `mlflow.db` given the uncertainty and the real risk
+to the existing model's run history -- backed it up
+(`mlflow.db.backup-20260817`) and left it untouched. The new lead-lag model
+uses its own separate `mlflow_leadlag.db` instead. **Unresolved**: mlflow
+should be pinned to a specific version in both `docker-compose.yml` and
+`ml/.venv`'s requirements, and `mlflow.db`'s actual compatible version should
+be identified before any future migration is attempted.

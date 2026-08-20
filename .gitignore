@@ -33,4 +33,4 @@ mlartifacts/
 # Data (don't commit raw pulled datasets)
 *.csv
 *.jsonl
-*.parquet
+*.parquetmlflow.db.backup-*
