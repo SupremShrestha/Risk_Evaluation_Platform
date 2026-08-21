@@ -116,3 +116,44 @@ complete data; a date from months back worked cleanly for all 77 districts.
 This means PredictHazardView will 404 for genuinely recent dates until
 CHIRPS backfills -- expected behavior given the known coverage-gap issue
 documented above, not something to "fix" further.
+
+## Severity/Impact Model (Casualty Classifier)
+**Same rigor lesson as the lead-lag model's split correction, this time
+catching a misleading headline number rather than an inflated one from a
+bad split.**
+
+Built a binary classifier predicting whether an incident involves a death
+or injury, using hazard type, district, month, day-of-week, and CHIRPS
+rainfall (rain_1d/3d/7d/peak_7d) -- all features knowable at/near incident
+time, deliberately excluding other fields from the same raw_data->loss
+object used to derive the label (familyAffectedCount, estimatedLoss, etc.
+would be leakage from the same outcome). incidents with no matching
+incident_rainfall row were dropped (16,880 -> 16,210), matching the
+lead-lag model's approach for consistency. Time-based split (most recent
+~20% by date) used from the start, applying the lesson already learned
+from the lead-lag model rather than re-discovering it.
+
+**Full model scored 0.900 ROC-AUC -- initially looked strong, but a
+hazard-only baseline (hazard_id as the sole feature) alone scored 0.880.**
+Nearly all the apparent performance came from hazard type recognition, not
+genuine prediction from context. Root cause: Snake Bite (99.3% casualty
+rate across 1,217 incidents) and High Altitude (99.2% across 251) are
+near-tautological categories -- "casualty occurred" is almost definitional
+of what qualifies as those incident types in BIPAD's own data, not
+something meaningfully predicted. Re-evaluating on only the genuinely
+uncertain hazard types (excluding any hazard with >90% casualty rate --
+Snake Bite, High Altitude) dropped ROC-AUC to **0.738**, with recall of
+only 0.271 (misses ~73% of actual casualty incidents on this harder
+subset) and precision of 0.576. **0.738 is the honest, defensible number
+for this model's real-world value; 0.900 is misleading if quoted alone,
+since it's mostly a two-category lookup effect.** Feature importances on
+the hard subset show hazard_id still leads (0.34) but district_id (0.19)
+and rainfall features (~0.35 combined) contribute meaningfully more than
+on the full dataset -- context genuinely matters once the tautological
+cases are removed.
+
+**Practical limitation**: even the honest 0.738 ROC-AUC model has low
+recall (0.271) on the hard subset -- not reliable enough on its own to
+flag "will this incident involve a casualty" for response prioritization
+without further work (class-weighting, threshold tuning, or more features
+like time-of-day were not yet explored).
