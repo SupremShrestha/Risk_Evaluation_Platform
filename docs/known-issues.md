@@ -191,3 +191,29 @@ meaningfully with hazard type. Not pursuing further without a genuinely
 different feature source (e.g. building/infrastructure inventory data,
 which BIPAD doesn't provide). This is a legitimate, honestly-earned
 negative result, not an unfinished model.
+
+## Anomaly/Spike Detection (Layered on the Existing Regression Model)
+Compared actual vs predicted incident counts on the SAME held-out test
+period train.py already evaluates on (most recent 3 months) -- not the
+full training history, since residuals on training rows would understate
+anomalies (the model has partially fit those patterns; min_samples_leaf=3,
+max_depth=10 leave real room for memorization). Ranked by a smoothed ratio
+((actual+1)/(predicted+1)) rather than raw residual, so "8 actual vs 1
+predicted" outranks "20 actual vs 15 predicted" despite the smaller raw gap.
+
+**Real finding: a widespread, correlated Landslide spike, not an isolated
+outlier.** 7+ districts (Rolpa, Udayapur, Ilam, Chitwan, Makwanpur,
+Jajarkot, Kalikot, Syangja) all showed Landslide counts 2.5-3.8x their
+predicted values, clustered mostly in July 2026 -- consistent with an
+unusually severe monsoon period, not noise. Rolpa alone: 26 actual vs 6.1
+predicted.
+
+**Likely data-completeness artifact, not a real trend: the under-prediction
+side is dominated by zero actual Fire/Flood incidents in July (the most
+recent test month) across many districts, despite the model expecting
+several.** This looks like incident reporting/ingestion lag for the most
+recent month rather than a genuine drop -- same category of issue as
+CHIRPS's near-real-time backfill lag, just for BIPAD's own incident feed
+instead of rainfall data. Not confirmed with a direct check (e.g. re-running
+this report weeks later to see if July's Fire counts rise as more reports
+land); flagged here as a real limitation rather than presented as a finding.
