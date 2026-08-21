@@ -157,3 +157,37 @@ recall (0.271) on the hard subset -- not reliable enough on its own to
 flag "will this incident involve a casualty" for response prioritization
 without further work (class-weighting, threshold tuning, or more features
 like time-of-day were not yet explored).
+
+## Economic Loss Regression — Genuine Negative Result
+**Unlike the casualty model (where trimming tautological cases revealed
+real signal underneath a misleading number), this is a complete null
+result across two different framings -- worth documenting as a finding,
+not a failure to fix.**
+
+Attempted to predict estimatedLoss (log1p-transformed given extreme skew:
+range Rs 1 to Rs 362,000,000, no outlier capping since the catastrophic
+tail is exactly what a disaster-risk platform should speak to) for the
+5,919 incidents with both a populated estimatedLoss and a matching
+incident_rainfall row. Same leakage-free feature set as the casualty
+model: hazard_id, district_id, month, day_of_week, rain_1d/3d/7d/peak_7d.
+
+**Continuous regression**: hazard-only baseline R² = 0.046; full feature
+set R² = 0.046 (no lift at all, -0.000). District/timing/rainfall added
+literally nothing on top of hazard type, and hazard type itself explains
+almost none of the variance.
+
+**Coarse tier classification** (low/medium/high loss via train-set
+terciles on the log scale, to test whether discretizing -- which worked
+for the casualty model -- would reveal signal regression couldn't):
+accuracy 0.368 against a 0.333 random baseline for 3 balanced classes.
+Barely above chance.
+
+**Conclusion**: estimatedLoss appears to be genuinely unpredictable from
+this feature set, under both framings. Likely explanation: it's a
+self-reported per-incident figure reflecting what specifically was
+damaged/destroyed (property value, individual circumstances) -- information
+this dataset doesn't capture at all, unlike casualty risk which correlates
+meaningfully with hazard type. Not pursuing further without a genuinely
+different feature source (e.g. building/infrastructure inventory data,
+which BIPAD doesn't provide). This is a legitimate, honestly-earned
+negative result, not an unfinished model.
