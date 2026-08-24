@@ -250,3 +250,24 @@ the explicit tracking URI, matching the rest of the codebase's convention.
 Same category as the earlier unpinned-dependency issues: an implicit
 default that worked by accident until an upgrade changed the default's
 behavior.
+
+## district_daily_rainfall Had Sparse History, Broke the Frontend Default
+The Hazard Risk predictor's default date ("N days before today") assumed
+a continuous daily record from the Airflow DAG -- but the DAG has only
+ever been run manually a couple times during testing (2026-06-01,
+2026-08-01), never on a live continuous @daily schedule in this
+environment. Any date outside those 2 manually-tested days 404'd,
+including the frontend's own default, making the feature look broken on
+first load even though the pipeline itself works correctly.
+
+Fixed two ways: (1) backfilled 16 more dates (every 6 days, 2026-04-06
+through 2026-07-05) via `fetch_daily_rainfall.py --date`, giving 18 total
+dates / 1,386 rows of real spread-out history; (2) changed the frontend
+default from a relative "N days ago" offset to a hardcoded known-good
+date (2026-07-05) -- a relative offset will drift onto un-backfilled
+dates again as time passes, since this table isn't actually being
+refreshed daily in this environment. **Real limitation, not fully
+resolved**: unless the Airflow scheduler is left running continuously
+long-term, this table's coverage will always be a fixed historical
+window, not a live rolling one -- the frontend default will need
+updating again if the currently-backfilled dates stop being relevant.

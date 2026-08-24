@@ -4,15 +4,12 @@ import { API_BASE } from "./constants";
 function HazardPredictor() {
   const [districts, setDistricts] = useState([]);
   const [district, setDistrict] = useState("");
-  const [date, setDate] = useState(() => {
-    // Default to 3 weeks back, inside CHIRPS' typical backfill-complete
-    // window -- "today" will usually 404 until CHIRPS catches up (see
-    // known-issues.md), so defaulting there would make the tool look
-    // broken on first load.
-    const d = new Date();
-    d.setDate(d.getDate() - 21);
-    return d.toISOString().slice(0, 10);
-  });
+  const [date, setDate] = useState("2026-07-05");
+  // Defaults to a known-good backfilled date rather than "N days ago" --
+  // district_daily_rainfall currently only has sparse manually-backfilled
+  // history (see known-issues.md), not a continuous daily record, since
+  // the Airflow DAG hasn't been run continuously in this environment.
+  // A relative offset would drift onto un-backfilled dates over time.
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
