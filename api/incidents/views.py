@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework import generics
-from .models import Incident, Hazard, District, DistrictDailyRainfall
-from .serializers import IncidentSerializer, HazardSerializer, DistrictSerializer, IncidentMapSerializer
+from .models import Incident, Hazard, District, DistrictDailyRainfall, IncidentHotspot
+from .serializers import IncidentSerializer, HazardSerializer, DistrictSerializer, IncidentMapSerializer, IncidentHotspotSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -164,3 +164,8 @@ class PredictHazardView(APIView):
                     "(time-based validation ROC-AUC 0.580) -- treat as a "
                     "risk-elevation signal, not a precise forecast.",
         })
+        
+class HotspotListView(generics.ListAPIView):
+    queryset = IncidentHotspot.objects.select_related("hazard", "dominant_district").order_by("-size")
+    serializer_class = IncidentHotspotSerializer
+    pagination_class = None  # ~300 rows total across all hazards, no need to paginate

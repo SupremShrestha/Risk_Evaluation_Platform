@@ -81,3 +81,24 @@ class DistrictDailyRainfall(models.Model):
 
     def __str__(self):
         return f"{self.district_id} rainfall on {self.sample_date}"
+
+class IncidentHotspot(models.Model):
+    id = models.IntegerField(primary_key=True)
+    hazard = models.ForeignKey(
+        Hazard, on_delete=models.DO_NOTHING, db_column="hazard_id"
+    )
+    cluster_label = models.IntegerField()
+    size = models.IntegerField()
+    center_lat = models.FloatField()
+    center_lon = models.FloatField()
+    dominant_district = models.ForeignKey(
+        District, on_delete=models.DO_NOTHING, db_column="dominant_district_id", null=True
+    )
+    computed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "incident_hotspots"
+
+    def __str__(self):
+        return f"{self.hazard_id} cluster {self.cluster_label} (size {self.size})"

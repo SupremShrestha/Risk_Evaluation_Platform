@@ -28,4 +28,13 @@ with DAG(
         bash_command="cd /opt/airflow/ml && python train.py",
     )
 
+    # Independent of the count model -- clusters raw incident geometry, not
+    # anything train.py produces. Placed on the same weekly cadence since
+    # spatial hotspots don't meaningfully shift day-to-day, unlike rainfall.
+    cluster_hotspots_task = BashOperator(
+        task_id="cluster_hotspots",
+        bash_command="cd /opt/airflow/ml && python cluster_hotspots.py",
+    )
+
     build_features_task >> train_task
+    cluster_hotspots_task

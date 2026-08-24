@@ -5,9 +5,18 @@ import { API_BASE } from "./constants";
 
 const NEPAL_CENTER = [28.3949, 84.124];
 
+// Scales a cluster's incident count to a marker radius -- sqrt so that
+// area (not just radius) grows roughly proportionally with size, which is
+// the perceptually correct way to size circles by magnitude.
+function hotspotRadius(size) {
+  return Math.max(8, Math.min(30, Math.sqrt(size) * 2.5));
+}
+
 function IncidentMap() {
   const [incidents, setIncidents] = useState([]);
+  const [hotspots, setHotspots] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showHotspots, setShowHotspots] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/v1/incidents/map/`)
@@ -16,6 +25,10 @@ function IncidentMap() {
         setIncidents(data); // no .results — this endpoint isn't paginated
         setLoading(false);
       });
+
+    fetch(`${API_BASE}/api/v1/hotspots/`)
+      .then((res) => res.json())
+      .then((data) => setHotspots(data));
   }, []);
 
   const legend = useMemo(() => {
@@ -41,7 +54,17 @@ function IncidentMap() {
         <p className="status-line">Loading map…</p>
       ) : (
         <>
-          <div className="status-line">{incidents.length} most recent incidents on the map</div>
+          <div className="status-line" style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <span>{incidents.length} most recent incidents on the map</span>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={showHotspots}
+                onChange={(e) => setShowHotspots(e.target.checked)}
+              />
+              Show hotspot clusters ({hotspots.length})
+            </label>
+          </div>
 
           {legend.length > 0 && (
             <div className="map-legend">
@@ -51,6 +74,13 @@ function IncidentMap() {
                   {title}
                 </span>
               ))}
+            </div>
+          )}
+
+          {showHotspots && (
+            <div className="status-line" style={{ fontSize: "0.85rem", opacity: 0.75, marginTop: -4 }}>
+              Larger circles = more incidents in that data-driven hotspot (DBSCAN clustering on
+              actual incident locations, computed weekly — not the same as the proximity clustering above).
             </div>
           )}
 
@@ -85,6 +115,30 @@ function IncidentMap() {
                   </CircleMarker>
                 ))}
             </MarkerClusterGroup>
+
+            {showHotspots &&
+              hotspots.map((h) => (
+                <CircleMarker
+                  key={h.id}
+                  center={[h.center_lat, h.center_lon]}
+                  radius={hotspotRadius(h.size)}
+                  pathOptions={{
+                    color: h.hazard_color || "#666",
+                    fillColor: h.hazard_color || "#666",
+                    fillOpacity: 0.2,
+                    weight: 2,
+                    dashArray: "4",
+                  }}
+                >
+                  <Popup>
+                    <strong>{h.hazard_title} hotspot</strong>
+                    <br />
+                    {h.size} incidents
+                    <br />
+                    Near {h.dominant_district_title}
+                  </Popup>
+                </CircleMarker>
+              ))}
           </MapContainer>
         </>
       )}

@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from .models import Incident, Hazard, District
-
+from .models import Incident, Hazard, District, IncidentHotspot
 
 class DistrictSerializer(serializers.ModelSerializer):
     class Meta:
@@ -47,3 +46,15 @@ class IncidentMapSerializer(serializers.ModelSerializer):
 
     def get_longitude(self, obj):
         return obj.point.x if obj.point else None
+    
+class IncidentHotspotSerializer(serializers.ModelSerializer):
+    hazard_title = serializers.CharField(source="hazard.title", read_only=True)
+    hazard_color = serializers.CharField(source="hazard.color", default=None)
+    dominant_district_title = serializers.CharField(source="dominant_district.title", default=None)
+
+    class Meta:
+        model = IncidentHotspot
+        fields = [
+            "id", "hazard_title", "hazard_color", "cluster_label", "size",
+            "center_lat", "center_lon", "dominant_district_title",
+        ]
