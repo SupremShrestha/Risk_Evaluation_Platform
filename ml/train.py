@@ -8,6 +8,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
+
 def load_data():
     df = pd.read_csv("data/features.csv")
     return df
@@ -108,6 +110,21 @@ def train_and_evaluate():
         importances = importances.sort_values(ascending=False)
         print("\nFeature importances:")
         print(importances.to_string())
+        
+                # Aggregate MAE across 9 hazard types could hide uneven performance
+        # on lower-volume ones -- check per-hazard before trusting the
+        # aggregate number, same discipline as the severity/lead-lag models.
+        test_df = test_df.copy()
+        test_df["predicted"] = preds
+        per_hazard = test_df.groupby("hazard").apply(
+            lambda g: pd.Series({
+                "mae": mean_absolute_error(g[TARGET_COL], g["predicted"]),
+                "n_rows": len(g),
+            }),
+            include_groups=False,
+        ).sort_values("mae", ascending=False)
+        print("\nPer-hazard MAE (test period only):")
+        print(per_hazard.to_string())
 
     return model, encoders
 

@@ -5,7 +5,10 @@ from dotenv import load_dotenv
 
 load_dotenv("../docker/.env")
 
-TOP_HAZARDS = ["Landslide", "Snake Bite", "Fire", "Flood"]
+TOP_HAZARDS = [
+    "Landslide", "Snake Bite", "Fire", "Flood",
+    "Forest Fire", "Wind Storm", "Animal Incidents", "Heavy Rainfall", "Thunderbolt",
+]
 
 from sqlalchemy import create_engine
 

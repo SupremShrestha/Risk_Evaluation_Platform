@@ -217,3 +217,36 @@ CHIRPS's near-real-time backfill lag, just for BIPAD's own incident feed
 instead of rainfall data. Not confirmed with a direct check (e.g. re-running
 this report weeks later to see if July's Fire counts rise as more reports
 land); flagged here as a real limitation rather than presented as a finding.
+
+## Expanded Count Model to 9 Hazard Types (from original 4)
+Added Forest Fire, Wind Storm, Animal Incidents, Heavy Rainfall, and
+Thunderbolt to TOP_HAZARDS in build_features.py -- all comfortably exceed
+the lowest-volume originally-trained hazard (Flood, 30.2/month): ranging
+34.9-54.5 incidents/month with 72-76 of 77 districts represented. Excluded
+High Altitude despite reasonable volume (10.2/month) since it's
+geographically confined to only 17 districts -- the district-based lag/
+historical-average features wouldn't generalize the same way.
+
+**Result: MAE improved from ~0.95 to 0.668, R² improved from ~0.69 to
+0.706 -- expanding hazard coverage did not dilute accuracy, and if
+anything helped slightly (more training rows overall for the same
+district/month-driven features).** Checked honestly with a per-hazard MAE
+breakdown on the held-out test period (not just trusting the aggregate
+number, same discipline as the severity/lead-lag models): MAE ranges from
+0.174 (Forest Fire) to 1.279 (Landslide). All 5 newly-added hazard types
+land in the better half of the ranking, not worse -- Landslide remains
+the hardest to predict, consistent with the anomaly detection finding
+of a genuine widespread monsoon spike exceeding seasonal expectations in
+July 2026.
+
+**Real bug surfaced by this retrain, unrelated to the hazard expansion
+itself: train.py never explicitly set mlflow.set_tracking_uri(), unlike
+every other training script in this project (train_leadlag.py,
+train_severity.py, ml_service.py all point at sqlite:///mlflow.db).** It
+was silently relying on mlflow's default local filesystem store
+(./mlruns), which mlflow 3.15.1 now blocks outright
+("filesystem tracking backend is in maintenance mode"). Fixed by adding
+the explicit tracking URI, matching the rest of the codebase's convention.
+Same category as the earlier unpinned-dependency issues: an implicit
+default that worked by accident until an upgrade changed the default's
+behavior.
