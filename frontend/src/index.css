@@ -16,6 +16,11 @@
   --hazard-flood: #2a6f97;
   --hazard-fire: #c1440e;
   --hazard-snakebite: #5b7b3b;
+  --hazard-forestfire: #9c2b0e;
+  --hazard-windstorm: #5c7a8a;
+  --hazard-animal: #7a5c3e;
+  --hazard-heavyrainfall: #1f5f8b;
+  --hazard-thunderbolt: #b8860b;
 
   --danger: #a3291f;
   --ok: #3f6e3a;

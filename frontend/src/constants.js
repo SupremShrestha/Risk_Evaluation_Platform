@@ -12,6 +12,11 @@ export const HAZARD_COLORS = {
   Flood: "var(--hazard-flood)",
   Fire: "var(--hazard-fire)",
   "Snake Bite": "var(--hazard-snakebite)",
+  "Forest Fire": "var(--hazard-forestfire)",
+  "Wind Storm": "var(--hazard-windstorm)",
+  "Animal Incidents": "var(--hazard-animal)",
+  "Heavy Rainfall": "var(--hazard-heavyrainfall)",
+  Thunderbolt: "var(--hazard-thunderbolt)",
 };
 
 export const HAZARD_COLORS_HEX = {
@@ -19,9 +24,17 @@ export const HAZARD_COLORS_HEX = {
   Flood: "#2a6f97",
   Fire: "#c1440e",
   "Snake Bite": "#5b7b3b",
+  "Forest Fire": "#9c2b0e",
+  "Wind Storm": "#5c7a8a",
+  "Animal Incidents": "#7a5c3e",
+  "Heavy Rainfall": "#1f5f8b",
+  Thunderbolt: "#b8860b",
 };
 
-export const TRAINED_HAZARDS = ["Landslide", "Snake Bite", "Fire", "Flood"];
+export const TRAINED_HAZARDS = [
+  "Landslide", "Snake Bite", "Fire", "Flood",
+  "Forest Fire", "Wind Storm", "Animal Incidents", "Heavy Rainfall", "Thunderbolt",
+];
 
 // Illustrative relative seasonal intensity (Jan=1 ... Dec=12), reflecting the
 // monsoon-driven swing described in the README (~40x quiet-to-peak for
