@@ -6,7 +6,6 @@ disaster information management system run by NDRRMA. It ingests live incident
 data, validates it, trains a seasonal risk-prediction model, and serves live
 predictions through a web API and dashboard — fully automated on a schedule.
 
-**Live demo / screenshots:** _(add once deployed)_
 
 ## Why this project
 
